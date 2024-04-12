@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 from lifelines import KaplanMeierFitter
 from lifelines.datasets import load_dd
+import plotly.graph_objs as go
 
 # Chargement des données
 data = load_dd()
@@ -64,20 +65,46 @@ elif visualization_option == 'Courbe de survie':
         template="plotly",
     )
     ci = kmf.confidence_interval_
-    fig.add_scatter(x=ci.index, y=ci['KM_estimate_lower_0.95'], mode='lines', fill='tonexty', line=dict(color='rgba(0,0,255,0.3)'), name='Intervalle de confiance (95%)')
-    fig.add_scatter(x=ci.index, y=ci['KM_estimate_upper_0.95'], mode='lines', line=dict(color='rgba(0,0,255,0)'), showlegend=False)
+    fig.add_trace(go.Scatter(x=ci.index, y=ci['KM_estimate_lower_0.95'], mode='lines', line=dict(color='rgba(0,0,255,0)'), fill=None, name='Intervalle de confiance (95%)'))
+    fig.add_trace(go.Scatter(x=ci.index, y=ci['KM_estimate_upper_0.95'], mode='lines', fill='tonexty', line=dict(color='rgba(0,0,255,0.3)'), name=''))
     st.plotly_chart(fig)
+
 
 # Représentation de la courbe de Kaplan-Meier pour chacun des deux groupes
 elif visualization_option == 'Courbe de Kaplan-Meier par type de régime':
     st.subheader("Courbe de Kaplan-Meier par type de régime")
     kmf = KaplanMeierFitter()
-    fig = px.area(title="Courbe de Kaplan-Meier par type de régime", labels={"x": "Durée", "y": "Probabilité de survie"}, template="plotly")
+    fig = go.Figure()
+
     for regime in data['regime'].unique():
-        kmf.fit(data[data['regime'] == regime]['duration'], event_observed=data[data['regime'] == regime]['observed'], label=regime)
-        fig.add_scatter(x=kmf.survival_function_.index, y=kmf.survival_function_[regime], mode='lines', name=f'{regime} - Kaplan-Meier')
+        kmf.fit(data[data['regime'] == regime]['duration'], event_observed=data[data['regime'] == regime]['observed'],
+                label=regime)
+
+        # Ajout de la courbe de Kaplan-Meier
+        fig.add_trace(go.Scatter(x=kmf.survival_function_.index,
+                                 y=kmf.survival_function_[regime],
+                                 mode='lines',
+                                 name=f'{regime} - Kaplan-Meier'))
+
+        # Ajout de l'intervalle de confiance (95%)
         ci = kmf.confidence_interval_
-        fig.add_scatter(x=ci.index, y=ci[f'{regime}_lower_0.95'], mode='lines', fill='tonexty', line=dict(color='rgba(0,0,255,0.3)'), name=f'Intervalle de confiance (95%) - {regime}')
-        fig.add_scatter(x=ci.index, y=ci[f'{regime}_upper_0.95'], mode='lines', line=dict(color='rgba(0,0,255,0)'), showlegend=False)
+        fig.add_trace(go.Scatter(x=ci.index,
+                                 y=ci[f'{regime}_lower_0.95'],
+                                 mode='lines',
+                                 line=dict(color='rgba(0,0,255,0)'),
+                                 fill=None,
+                                 name=f'Intervalle de confiance (95%) - {regime}'))
+
+        fig.add_trace(go.Scatter(x=ci.index,
+                                 y=ci[f'{regime}_upper_0.95'],
+                                 mode='lines',
+                                 fill='tonexty',
+                                 line=dict(color='rgba(0,0,255,0.3)'),
+                                 name=''))
+
+    fig.update_layout(title="Courbe de Kaplan-Meier par type de régime",
+                      xaxis_title="Durée",
+                      yaxis_title="Probabilité de survie")
+
     st.plotly_chart(fig)
 
